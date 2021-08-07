@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import cls from "classnames";
+import useWebSocket, { ReadyState } from "react-use-websocket";
 import { PlayIcon } from "./icons/PlayIcon";
 import { PauseIcon } from "./icons/PauseIcon";
 
@@ -22,46 +23,49 @@ export function Container({
   onRunClick,
   onStopClick,
 }: ContainerProps) {
-  const [showLogs, setShowLogs] = useState(false);
-  const [logs, setLogs] = useState<string[]>([]);
   const nop = () => {};
+  const logBottomEl = useRef<HTMLDivElement>(null);
+  const logTerminalEl = useRef<HTMLDivElement>(null);
+  const [showLogs, setShowLogs] = useState(false);
+  const [socketOpen, setSocketOpen] = useState(false);
   const isRunning = useCallback(() => state === "running", [state]);
   const isCreated = useCallback(() => state === "created", [state]);
   const isExited = useCallback(() => state === "exited", [state]);
+  const [logsHistory, setLogsLineHisoty] = useState<
+    { message: string; timestamp: string }[] | null
+  >(null);
+
+  const { lastJsonMessage, readyState, sendMessage } = useWebSocket(
+    "ws://localhost:3001/ws/container/logs",
+    {
+      onClose: () => console.warn("connection closed for container ", image),
+      onOpen: () => {
+        console.info("connection opened for container ", image);
+        sendMessage(id);
+      },
+      // shouldReconnect: () => true // TODO: implement reconnect, but pass last timestamp as argument
+    },
+    socketOpen // TODO: implement closing the connection
+  );
 
   useEffect(() => {
-    if (!showLogs) {
+    if (!lastJsonMessage) {
       return;
     }
 
-    const conn = new WebSocket("ws://localhost:3001/ws");
+    setLogsLineHisoty((oldLogsLineHistory) => {
+      return oldLogsLineHistory
+        ? [...oldLogsLineHistory, lastJsonMessage]
+        : [lastJsonMessage];
+    });
+  }, [lastJsonMessage]);
 
-    conn.onclose = function () {
-      console.log("connection closed");
-    };
-    conn.onopen = () => {
-      console.log("websocket opened for container id: ", id);
-      conn.send(id);
-    };
-
-    conn.onerror = (error) => {
-      console.error("error: ", error);
-    };
-
-    conn.onmessage = async function (evt) {
-      setLogs((lastLogs) => {
-        if (lastLogs.length > 1000) { // reset logs array
-          return evt.data.split("\n");
-        } else {
-          return [...lastLogs, ...evt.data.split("\n")];
-        }
-      });
-    };
-
-    return () => {
-      conn.close();
-    };
-  }, [id, showLogs]);
+  // Scroll terminal to bottom as soon as new logs arrive
+  useEffect(() => {
+    if (logsHistory && logsHistory.length > 0) {
+      logTerminalEl.current?.scrollTo({ top: logBottomEl.current?.offsetTop });
+    }
+  }, [logsHistory]);
 
   return (
     <div
@@ -87,7 +91,9 @@ export function Container({
           <div>
             <div
               className=" text-lg font-medium text-black"
-              onClick={() => setShowLogs(true)}
+              onClick={() => {
+                setShowLogs(true);
+              }}
             >
               <span>{image}</span>
               <span className="ml-1 text-xs text-gray-500">{name}</span>
@@ -122,23 +128,56 @@ export function Container({
 
       {showLogs && (
         <div className="resize-y bg-gray-900 border-2 border-gray-500 p-2 mt-3 font-mono text-xs relative">
-          <span className="flex h-3 w-3 absolute -top-1.5 -left-1.5" title="Streaming logs">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+          <span
+            className="flex h-3 w-3 absolute -top-1.5 -left-1.5"
+            title="Streaming logs"
+            onClick={() => setSocketOpen(false)}
+          >
+            <span
+              className={cls(
+                "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+                {
+                  "bg-green-400": readyState === ReadyState.OPEN,
+                  "bg-red-400": readyState === ReadyState.CLOSED,
+                  "bg-blue-400":
+                    readyState !== ReadyState.OPEN &&
+                    readyState !== ReadyState.CLOSED,
+                }
+              )}
+            ></span>
+            <span
+              className={cls("relative inline-flex rounded-full h-3 w-3", {
+                "bg-green-500": readyState === ReadyState.OPEN,
+                "bg-red-500": readyState === ReadyState.CLOSED,
+                "bg-blue-500":
+                  readyState !== ReadyState.OPEN &&
+                  readyState !== ReadyState.CLOSED,
+              })}
+            ></span>
           </span>
           <span
             className="text-white underline hover:cursor-pointer absolute top-1 right-2"
-            onClick={() => setShowLogs(false)}
+            onClick={() => {
+              setSocketOpen(true);
+              setShowLogs(false);
+              setLogsLineHisoty([]);
+            }}
           >
-            {/* TODO:  */}
             close
           </span>
-          <div className="min-h-60 h-80 text-green-500 flex flex-col-reverse overflow-y-auto  ">
-            {logs.length === 0
-              ? "Fetching logs..."
-              : logs.reverse().map((log) => (
-                  // TODO: add key
-                  <span className="block">{log}</span>
+          <div
+            ref={logTerminalEl}
+            className="min-h-60 h-80 text-green-500 flex flex-col overflow-y-auto"
+          >
+            {logsHistory === null
+              ? "[Empty log]"
+              : logsHistory.map((log, i) => (
+                  <div
+                    key={log.timestamp}
+                    ref={i === logsHistory.length - 1 ? logBottomEl : null} // set ref of the last message element
+                  >
+                    {log.message}
+                  </div>
                 ))}
           </div>
         </div>

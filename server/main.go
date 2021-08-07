@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/binary"
 	"encoding/json"
@@ -8,7 +9,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
+	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -17,6 +20,11 @@ import (
 
 type ContainerListFilters struct {
 	ID string
+}
+
+type LogMessage struct {
+	Timestamp string `json:"timestamp"`
+	Message   string `json:"message"`
 }
 
 func getContainers(w http.ResponseWriter, r *http.Request) {
@@ -139,9 +147,9 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isTty := container.Config.Tty
+	if !container.Config.Tty {
+		fmt.Println("container is NOT attached to TTY")
 
-	if !isTty {
 		for {
 			header := make([]byte, 8)
 
@@ -156,7 +164,21 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 
-			output := make([]byte, binary.BigEndian.Uint32(header[4:]))
+			timestamp := make([]byte, 31) // 30 bytes for timestamp and 1 for the following space
+
+			n, err = reader.Read(timestamp)
+
+			if err != nil || n != 31 {
+				if err == io.EOF {
+					fmt.Println("EOF reading timestamp")
+					break
+				}
+				fmt.Println("Error during timestamp reading:", err)
+				break
+			}
+
+			outputSize := binary.BigEndian.Uint32(header[4:])
+			output := make([]byte, outputSize-uint32(n)) // makes sure to remove size of timestamp read
 			n, err = reader.Read(output)
 
 			if err != nil {
@@ -168,43 +190,65 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 
-			err = conn.WriteMessage(websocket.TextMessage, output[:n])
+			logMessage := LogMessage{
+				Message:   string(output[:n]),
+				Timestamp: string(timestamp),
+			}
+
+			bytes, err := json.Marshal(logMessage)
+
+			if err != nil {
+				fmt.Println("Error marshaling json: ", err)
+				break
+			}
+
+			err = conn.WriteMessage(websocket.TextMessage, bytes)
 
 			if err != nil {
 				fmt.Println("Error during message writing:", err)
 				break
 			}
-
-			fmt.Println("write message non-TTY")
 		}
 	} else {
-		for {
-			output := make([]byte, 500000)
-			n, err := reader.Read(output)
+		fmt.Println("container is attached to TTY")
+
+		scanner := bufio.NewScanner(reader)
+
+		logLines := []*LogMessage{}
+
+		for scanner.Scan() {
+			textSplitted := strings.SplitN(scanner.Text(), " ", 2)
+			logLine := new(LogMessage)
+			logLine.Timestamp, logLine.Message = textSplitted[0], textSplitted[1]
+
+			logLines = append(logLines, logLine)
+		}
+
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintln(os.Stderr, "error reading raeder: ", err)
+			return
+		}
+
+		for _, log := range logLines {
+			bytes, err := json.Marshal(log)
 
 			if err != nil {
-				if err == io.EOF {
-					fmt.Println("EOF reading output")
-					break
-				}
-				fmt.Println("Error during output reading:", err)
+				fmt.Println("Error marshaling json: ", err)
 				break
 			}
 
-			err = conn.WriteMessage(websocket.TextMessage, output[:n])
+			err = conn.WriteMessage(websocket.TextMessage, bytes)
 
 			if err != nil {
 				fmt.Println("Error during message writing:", err)
 				break
 			}
-
-			fmt.Println("write message non-TTY")
 		}
 	}
 }
 
 func handleRequests() {
-	http.HandleFunc("/ws", socketHandler)
+	http.HandleFunc("/ws/container/logs", socketHandler)
 	http.HandleFunc("/container", getContainers)
 	http.HandleFunc("/container/", handleContainerSubRoutes)
 	log.Fatal(http.ListenAndServe(":3001", nil))
