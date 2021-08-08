@@ -8,7 +8,7 @@ const createURL = (url: string): string => {
 };
 
 export const startContainer = async (id: string): Promise<void> => {
-  return fetch(createURL(`/container/${id}/start`)).then((res) => {
+  return fetch(createURL(`/container/${id}/start`), { method: 'PUT' }).then((res) => {
     if (res.status !== 200) {
       throw new Error("Error trying to start container");
     }
@@ -16,7 +16,7 @@ export const startContainer = async (id: string): Promise<void> => {
 };
 
 export const stopContainer = async (id: string): Promise<void> => {
-  return fetch(createURL(`/container/${id}/stop`)).then((res) => {
+  return fetch(createURL(`/container/${id}/stop`), { method: 'PUT' }).then((res) => {
     if (res.status !== 200) {
       throw new Error("Error trying to start container");
     }

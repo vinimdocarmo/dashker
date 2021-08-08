@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -162,14 +161,7 @@ func socketHandler(id string, w http.ResponseWriter, r *http.Request) {
 				Timestamp: string(timestamp),
 			}
 
-			bytes, err := json.Marshal(logMessage)
-
-			if err != nil {
-				fmt.Println("Error marshaling json: ", err)
-				break
-			}
-
-			err = conn.WriteMessage(websocket.TextMessage, bytes)
+			err = conn.WriteJSON(logMessage)
 
 			if err != nil {
 				fmt.Println("Error during message writing:", err)
@@ -197,14 +189,7 @@ func socketHandler(id string, w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, log := range logLines {
-			bytes, err := json.Marshal(log)
-
-			if err != nil {
-				fmt.Println("Error marshaling json: ", err)
-				break
-			}
-
-			err = conn.WriteMessage(websocket.TextMessage, bytes)
+			err = conn.WriteJSON(log)
 
 			if err != nil {
 				fmt.Println("Error during message writing:", err)
@@ -247,7 +232,7 @@ func main() {
 
 		c.JSON(200, containers)
 	})
-	r.GET("/container/:id/start", func(c *gin.Context) {
+	r.PUT("/container/:id/start", func(c *gin.Context) {
 		id := c.Params.ByName("id")
 
 		err := starContainer(id)
@@ -259,7 +244,7 @@ func main() {
 			return
 		}
 	})
-	r.GET("/container/:id/stop", func(c *gin.Context) {
+	r.PUT("/container/:id/stop", func(c *gin.Context) {
 		id := c.Params.ByName("id")
 
 		err := stopContainer(id)
