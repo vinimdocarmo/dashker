@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from "react";
 import cls from "classnames";
-import { PlayIcon } from "./icons/PlayIcon";
-import { PauseIcon } from "./icons/PauseIcon";
+import { HiPlay, HiStop } from "react-icons/hi";
 import { ContainerLogs } from "./ContainerLogs";
 
 type ContainerProps = {
@@ -68,27 +67,30 @@ export function Container({
         </div>
 
         <div className="flex">
-          <PlayIcon
-            size="30"
-            className={cls("mr-2", {
-              "text-gray-400": isRunning(),
-              "cursor-pointer text-gray-900": !isRunning(),
-            })}
-            onClick={!isRunning() ? () => onRunClick(id) : nop}
-          />
-          {/* TODO: change pause icon to stop icon */}
-          <PauseIcon
-            size="30"
-            className={cls({
-              "text-gray-400": !isRunning(),
-              "cursor-pointer text-gray-900": isRunning(),
-            })}
-            onClick={isRunning() ? () => onStopClick(id) : nop}
-          />
+          <button onClick={!isRunning() ? () => onRunClick(id) : nop}>
+            <HiPlay
+              size="30"
+              className={cls("mr-2", {
+                "text-gray-400": isRunning(),
+                "text-gray-900": !isRunning(),
+              })}
+            />
+          </button>
+          <button onClick={isRunning() ? () => onStopClick(id) : nop}>
+            <HiStop
+              size="30"
+              className={cls({
+                "text-gray-400": !isRunning(),
+                "text-gray-900": isRunning(),
+              })}
+            />
+          </button>
         </div>
       </div>
 
-      {showLogs && <ContainerLogs containerId={id} onClose={() => setShowLogs(false)} />}
+      {showLogs && (
+        <ContainerLogs containerId={id} onClose={() => setShowLogs(false)} />
+      )}
     </div>
   );
 }
