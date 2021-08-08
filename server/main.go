@@ -7,14 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
@@ -27,85 +27,60 @@ type LogMessage struct {
 	Message   string `json:"message"`
 }
 
-func getContainers(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
+func getContainers() ([]types.Container, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 
 	if err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
-	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
-	if err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
-		return
-	}
-
-	err = json.NewEncoder(w).Encode(containers)
-	if err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
-		return
-	}
+	return cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
 }
 
-func handleContainerSubRoutes(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+func starContainer(id string) error {
+	cli, err := client.NewClientWithOpts(client.FromEnv)
 
-	if matched, err := regexp.MatchString(`^\/container\/[[:alnum:]]+\/start$`, r.URL.Path); err == nil && matched {
-		re := regexp.MustCompile(`\/container\/(?P<id>[[:alnum:]]+)\/start`)
-		id := re.FindStringSubmatch(r.URL.Path)[1]
-
-		cli, err := client.NewClientWithOpts(client.FromEnv)
-
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-
-		err = cli.ContainerStart(context.Background(), id, types.ContainerStartOptions{})
-
-		if err != nil {
-			fmt.Println(err)
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-
-		fmt.Fprint(w)
-		return
-	} else if matched, err := regexp.MatchString(`^\/container\/[[:alnum:]]+\/stop$`, r.URL.Path); err == nil && matched {
-		re := regexp.MustCompile(`\/container\/(?P<id>[[:alnum:]]+)\/stop`)
-		id := re.FindStringSubmatch(r.URL.Path)[1]
-
-		cli, err := client.NewClientWithOpts(client.FromEnv)
-
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-
-		err = cli.ContainerStop(context.Background(), id, nil)
-
-		if err != nil {
-			fmt.Println(err)
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-
-		fmt.Fprint(w)
-		return
-	} else {
-		http.Error(w, "", http.StatusNotFound)
-		return
+	if err != nil {
+		return err
 	}
+
+	err = cli.ContainerStart(context.Background(), id, types.ContainerStartOptions{})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func stopContainer(id string) error {
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+
+	if err != nil {
+		return err
+	}
+
+	err = cli.ContainerStop(context.Background(), id, nil)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
-} // use default options
+	CheckOrigin: func(r *http.Request) bool {
+		for _, origin := range r.Header["Origin"] {
+			if origin == "http://localhost:3000" {
+				return true
+			}
+		}
+		return false
+	},
+}
 
-func socketHandler(w http.ResponseWriter, r *http.Request) {
+func socketHandler(id string, w http.ResponseWriter, r *http.Request) {
 	// Upgrade our raw HTTP connection to a websocket based one
 	conn, err := upgrader.Upgrade(w, r, nil)
 
@@ -116,13 +91,6 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer conn.Close()
 
-	_, buff, err := conn.ReadMessage()
-
-	if err != nil {
-		fmt.Println("Error reading message from socket: ", err)
-		return
-	}
-
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 
 	if err != nil {
@@ -130,7 +98,6 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := string(buff)
 	reader, err := cli.ContainerLogs(context.Background(), id, types.ContainerLogsOptions{Tail: "100", Follow: true, ShowStdout: true, ShowStderr: true, Timestamps: true})
 
 	if err != nil {
@@ -247,13 +214,63 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleRequests() {
-	http.HandleFunc("/ws/container/logs", socketHandler)
-	http.HandleFunc("/container", getContainers)
-	http.HandleFunc("/container/", handleContainerSubRoutes)
-	log.Fatal(http.ListenAndServe(":3001", nil))
-}
-
 func main() {
-	handleRequests()
+	r := gin.Default()
+
+	// - No origin allowed by default
+	// - GET,POST, PUT, HEAD methods
+	// - Credentials share disabled
+	// - Preflight requests cached for 12 hours
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"http://localhost:3000"}
+
+	r.Use(cors.New(config))
+
+	r.GET("ws/container/:id/logs", func(c *gin.Context) {
+		id := c.Params.ByName("id")
+		socketHandler(id, c.Writer, c.Request)
+	})
+	r.GET("/ping", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "pong",
+		})
+	})
+	r.GET("/container", func(c *gin.Context) {
+		containers, err := getContainers()
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(200, containers)
+	})
+	r.GET("/container/:id/start", func(c *gin.Context) {
+		id := c.Params.ByName("id")
+
+		err := starContainer(id)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+	})
+	r.GET("/container/:id/stop", func(c *gin.Context) {
+		id := c.Params.ByName("id")
+
+		err := stopContainer(id)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+	})
+
+	r.Run(":3001") // listen and serve on 0.0.0.0:8080
 }
