@@ -15,6 +15,14 @@ export const startContainer = async (id: string): Promise<void> => {
   });
 };
 
+export const removeContainer = async (id: string): Promise<void> => {
+  return fetch(createURL(`/container/${id}/remove`), { method: 'PUT' }).then((res) => {
+    if (res.status !== 200) {
+      throw new Error("Error trying to remove container");
+    }
+  });
+};
+
 export const stopContainer = async (id: string): Promise<void> => {
   return fetch(createURL(`/container/${id}/stop`), { method: 'PUT' }).then((res) => {
     if (res.status !== 200) {

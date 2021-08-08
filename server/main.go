@@ -68,6 +68,22 @@ func stopContainer(id string) error {
 	return nil
 }
 
+func removeContainer(id string) error {
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+
+	if err != nil {
+		return err
+	}
+
+	err = cli.ContainerRemove(context.Background(), id, types.ContainerRemoveOptions{Force: true})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		for _, origin := range r.Header["Origin"] {
@@ -248,6 +264,18 @@ func main() {
 		id := c.Params.ByName("id")
 
 		err := stopContainer(id)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+	})
+	r.PUT("/container/:id/remove", func(c *gin.Context) {
+		id := c.Params.ByName("id")
+
+		err := removeContainer(id)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{

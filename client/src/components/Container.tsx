@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 import cls from "classnames";
-import { HiPlay, HiStop } from "react-icons/hi";
+import { HiPlay, HiStop, HiTrash } from "react-icons/hi";
 import { ContainerLogs } from "./ContainerLogs";
 
 type ContainerProps = {
@@ -11,6 +11,7 @@ type ContainerProps = {
   state: string;
   onRunClick: (id: string) => void;
   onStopClick: (id: string) => void;
+  onRemoveClick: (id: string) => void;
 };
 
 export function Container({
@@ -21,6 +22,7 @@ export function Container({
   state,
   onRunClick,
   onStopClick,
+  onRemoveClick,
 }: ContainerProps) {
   const nop = () => {};
   const [showLogs, setShowLogs] = useState(false);
@@ -66,11 +68,11 @@ export function Container({
           </div>
         </div>
 
-        <div className="flex">
+        <div className="flex space-x-1">
           <button onClick={!isRunning() ? () => onRunClick(id) : nop}>
             <HiPlay
               size="30"
-              className={cls("mr-2", {
+              className={cls({
                 "text-gray-400": isRunning(),
                 "text-gray-900": !isRunning(),
               })}
@@ -84,6 +86,9 @@ export function Container({
                 "text-gray-900": isRunning(),
               })}
             />
+          </button>
+          <button onClick={() => onRemoveClick(id)}>
+            <HiTrash size="30" className="text-gray-900" />
           </button>
         </div>
       </div>

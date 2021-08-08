@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { getContainers, startContainer, stopContainer } from "./api";
+import {
+  getContainers,
+  startContainer,
+  stopContainer,
+  removeContainer,
+} from "./api";
 import { DockerContainer } from "./api/types/container.type";
 import { Container } from "./components/Container";
 
@@ -16,6 +21,18 @@ function App() {
   const onStopClick = async (id: string): Promise<void> => {
     try {
       await stopContainer(id);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const onRemoveClick = async (id: string): Promise<void> => {
+    try {
+      await removeContainer(id);
+
+      setContainers((oldContainers) => {
+        return [...oldContainers.filter((container) => container.id !== id)];
+      });
     } catch (error) {
       console.error(error);
     }
@@ -40,6 +57,7 @@ function App() {
           state={state}
           onRunClick={onRunClick}
           onStopClick={onStopClick}
+          onRemoveClick={onRemoveClick}
         />
       ))}
     </div>
