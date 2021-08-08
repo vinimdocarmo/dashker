@@ -2,6 +2,7 @@ import React, { useCallback, useState } from "react";
 import cls from "classnames";
 import { HiPlay, HiStop, HiTrash } from "react-icons/hi";
 import { ContainerLogs } from "./ContainerLogs";
+import { ClipLoader } from "react-spinners";
 
 type ContainerProps = {
   id: string;
@@ -9,7 +10,8 @@ type ContainerProps = {
   image: string;
   status: string;
   state: string;
-  onRunClick: (id: string) => void;
+  loadingState?: "stoping" | "starting" | "removing" | "default";
+  onStartClick: (id: string) => void;
   onStopClick: (id: string) => void;
   onRemoveClick: (id: string) => void;
 };
@@ -20,9 +22,10 @@ export function Container({
   image,
   status,
   state,
-  onRunClick,
+  onStartClick: onRunClick,
   onStopClick,
   onRemoveClick,
+  loadingState = "default",
 }: ContainerProps) {
   const nop = () => {};
   const [showLogs, setShowLogs] = useState(false);
@@ -69,27 +72,55 @@ export function Container({
         </div>
 
         <div className="flex space-x-1">
-          <button onClick={!isRunning() ? () => onRunClick(id) : nop}>
-            <HiPlay
-              size="30"
-              className={cls({
-                "text-gray-400": isRunning(),
-                "text-gray-900": !isRunning(),
-              })}
-            />
-          </button>
-          <button onClick={isRunning() ? () => onStopClick(id) : nop}>
-            <HiStop
-              size="30"
-              className={cls({
-                "text-gray-400": !isRunning(),
-                "text-gray-900": isRunning(),
-              })}
-            />
-          </button>
-          <button onClick={() => onRemoveClick(id)}>
-            <HiTrash size="30" className="text-gray-900" />
-          </button>
+          {loadingState === "starting" ? (
+            <ClipLoader size="25px" />
+          ) : (
+            <button
+              onClick={
+                !isRunning() && loadingState === "default"
+                  ? () => onRunClick(id)
+                  : nop
+              }
+            >
+              <HiPlay
+                size="30"
+                className={cls({
+                  "text-gray-400": isRunning(),
+                  "text-gray-900": !isRunning(),
+                })}
+              />
+            </button>
+          )}
+          {loadingState === "stoping" ? (
+            <ClipLoader size="25px" />
+          ) : (
+            <button
+              onClick={
+                isRunning() && loadingState === "default"
+                  ? () => onStopClick(id)
+                  : nop
+              }
+            >
+              <HiStop
+                size="30"
+                className={cls({
+                  "text-gray-400": !isRunning(),
+                  "text-gray-900": isRunning(),
+                })}
+              />
+            </button>
+          )}
+          {loadingState === "removing" ? (
+            <ClipLoader size="25px" />
+          ) : (
+            <button
+              onClick={
+                loadingState === "default" ? () => onRemoveClick(id) : nop
+              }
+            >
+              <HiTrash size="30" className="text-gray-900" />
+            </button>
+          )}
         </div>
       </div>
 
