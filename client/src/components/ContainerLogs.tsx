@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import cls from "classnames";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { HiSearch, HiX } from "react-icons/hi";
+import { useDebounce } from "../hooks/useDebounce";
 
 export const ContainerLogs: React.FC<{
   containerId: string;
@@ -10,10 +11,15 @@ export const ContainerLogs: React.FC<{
   const logBottomEl = useRef<HTMLDivElement>(null);
   const logTerminalEl = useRef<HTMLDivElement>(null);
   const [socketOpen, setSocketOpen] = useState(true);
+  const [searchQuery, setSearchQUery] = useState("");
+  const debouncedSearchQuery = useDebounce<string>(searchQuery, 500);
   const [stickToBottom, setStickToBottom] = useState(true);
-  const [logsHistory, setLogsLineHisoty] = useState<
-    { message: string; timestamp: string }[] | null
-  >(null);
+  const [filteredLogs, setFilteredLogs] = useState<
+    { message: string; timestamp: string }[]
+  >([]);
+  const [logs, setLogs] = useState<{ message: string; timestamp: string }[]>(
+    []
+  );
 
   const { lastJsonMessage, readyState } = useWebSocket(
     `ws://localhost:3001/ws/container/${containerId}/logs`,
@@ -34,7 +40,7 @@ export const ContainerLogs: React.FC<{
       return;
     }
 
-    setLogsLineHisoty((oldLogsLineHistory) => {
+    setLogs((oldLogsLineHistory) => {
       return oldLogsLineHistory
         ? [...oldLogsLineHistory, lastJsonMessage]
         : [lastJsonMessage];
@@ -43,10 +49,28 @@ export const ContainerLogs: React.FC<{
 
   // Scroll terminal to bottom as soon as new logs arrive
   useEffect(() => {
-    if (logsHistory && logsHistory.length > 0 && stickToBottom) {
+    if (logs && logs.length > 0 && stickToBottom) {
       logTerminalEl.current?.scrollTo({ top: logBottomEl.current?.offsetTop });
     }
-  }, [logsHistory, stickToBottom]);
+  }, [logs, stickToBottom]);
+
+  // Search for logs
+  useEffect(() => {
+    if (debouncedSearchQuery) {
+      const filterdLogs = logs.filter((log) => {
+        const index = log.message
+          .toLowerCase()
+          .indexOf(debouncedSearchQuery.toLowerCase());
+
+        return index >= 0;
+      });
+
+      setFilteredLogs(filterdLogs);
+    } else {
+      setFilteredLogs([]);
+    }
+  }, [debouncedSearchQuery, logs]);
+
   return (
     <div>
       <div className="resize-y bg-gray-900 p-2 mt-3 font-mono text-xs relative">
@@ -81,7 +105,7 @@ export const ContainerLogs: React.FC<{
           className="absolute top-2 right-2"
           onClick={() => {
             setSocketOpen(true);
-            setLogsLineHisoty([]);
+            setLogs([]);
             onClose();
           }}
         >
@@ -91,12 +115,12 @@ export const ContainerLogs: React.FC<{
           ref={logTerminalEl}
           className="min-h-60 h-80 text-green-500 flex flex-col overflow-y-auto"
         >
-          {logsHistory === null
+          {logs.length === 0
             ? "[Empty log]"
-            : logsHistory.map((log, i) => (
+            : (filteredLogs.length > 0 ? filteredLogs : logs).map((log, i) => (
                 <div
                   key={log.timestamp}
-                  ref={i === logsHistory.length - 1 ? logBottomEl : null} // set ref of the last message element
+                  ref={i === logs.length - 1 ? logBottomEl : null} // set ref of the last message element
                 >
                   {log.message}
                 </div>
@@ -110,6 +134,8 @@ export const ContainerLogs: React.FC<{
             type="text"
             placeholder="Search..."
             className="w-96 appearance-none bg-gray-800 border-none py-1 px-2 text-gray-400 leading-tight focus:outline-none focus:shadow-outline"
+            value={searchQuery}
+            onChange={(ev) => setSearchQUery(ev.target.value)}
           />
         </div>
         <div className="flex items-center space-x-1">
