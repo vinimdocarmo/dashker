@@ -107,14 +107,7 @@ func (ctrl *ContainerController) Logs(c *gin.Context) {
 
 	defer conn.Close()
 
-	cli, err := client.NewClientWithOpts(client.FromEnv)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	reader, err := cli.ContainerLogs(context.Background(), id, types.ContainerLogsOptions{Tail: "100", Follow: true, ShowStdout: true, ShowStderr: true, Timestamps: true})
+	reader, err := ctrl.DockerClient.ContainerLogs(context.Background(), id, types.ContainerLogsOptions{Tail: "100", Follow: true, ShowStdout: true, ShowStderr: true, Timestamps: true})
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -123,7 +116,7 @@ func (ctrl *ContainerController) Logs(c *gin.Context) {
 
 	defer reader.Close()
 
-	container, err := cli.ContainerInspect(context.Background(), id)
+	container, err := ctrl.DockerClient.ContainerInspect(context.Background(), id)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
