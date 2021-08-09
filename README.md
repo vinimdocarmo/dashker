@@ -2,7 +2,7 @@
 
 Or simply Dashker.
 
-![docker dashboard picture](https://github.com/vinimdocarmo/dashker/raw/master/dashboard.png "Dashker screeshot")
+![docker dashboard picture](/dashboard.png "Dashker screeshot")
 
 ## Run application
 
