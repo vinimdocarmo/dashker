@@ -19,11 +19,11 @@ type LogMessage struct {
 	Message   string `json:"message"`
 }
 
-type DockerController struct {
+type ContainerController struct {
 	DockerClient *client.Client
 }
 
-func (ctrl *DockerController) Remove(c *gin.Context) {
+func (ctrl *ContainerController) Remove(c *gin.Context) {
 	id := c.Params.ByName("id")
 	err := ctrl.DockerClient.ContainerRemove(c.Request.Context(), id, types.ContainerRemoveOptions{Force: true})
 
@@ -35,7 +35,7 @@ func (ctrl *DockerController) Remove(c *gin.Context) {
 	c.Writer.WriteHeader(http.StatusOK)
 }
 
-func (ctrl *DockerController) Start(c *gin.Context) {
+func (ctrl *ContainerController) Start(c *gin.Context) {
 	id := c.Params.ByName("id")
 	err := ctrl.DockerClient.ContainerStart(c.Request.Context(), id, types.ContainerStartOptions{})
 
@@ -47,7 +47,7 @@ func (ctrl *DockerController) Start(c *gin.Context) {
 	c.Writer.WriteHeader(http.StatusOK)
 }
 
-func (ctrl *DockerController) Stop(c *gin.Context) {
+func (ctrl *ContainerController) Stop(c *gin.Context) {
 	id := c.Params.ByName("id")
 	err := ctrl.DockerClient.ContainerStop(c.Request.Context(), id, nil)
 
@@ -59,7 +59,7 @@ func (ctrl *DockerController) Stop(c *gin.Context) {
 	c.Writer.WriteHeader(http.StatusOK)
 }
 
-func (ctrl *DockerController) Restart(c *gin.Context) {
+func (ctrl *ContainerController) Restart(c *gin.Context) {
 	id := c.Params.ByName("id")
 	err := ctrl.DockerClient.ContainerRestart(c.Request.Context(), id, nil)
 
@@ -71,7 +71,7 @@ func (ctrl *DockerController) Restart(c *gin.Context) {
 	c.Writer.WriteHeader(http.StatusOK)
 }
 
-func (ctrl *DockerController) List(c *gin.Context) {
+func (ctrl *ContainerController) List(c *gin.Context) {
 	containers, err := ctrl.DockerClient.ContainerList(c.Request.Context(), types.ContainerListOptions{All: true})
 
 	if err != nil {
@@ -82,7 +82,7 @@ func (ctrl *DockerController) List(c *gin.Context) {
 	c.JSON(http.StatusOK, containers)
 }
 
-func (ctrl *DockerController) Logs(c *gin.Context) {
+func (ctrl *ContainerController) Logs(c *gin.Context) {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			for _, origin := range r.Header["Origin"] {

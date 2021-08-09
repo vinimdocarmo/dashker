@@ -1,11 +1,8 @@
 package main
 
 import (
-	"github.com/vinimdocarmo/dashker/controller"
-
 	"github.com/docker/docker/client"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
+	"github.com/vinimdocarmo/dashker/ginmix"
 )
 
 func main() {
@@ -15,25 +12,5 @@ func main() {
 		panic(err)
 	}
 
-	dockerCtrl := controller.DockerController{DockerClient: cli}
-
-	r := gin.Default()
-
-	// - No origin allowed by default
-	// - GET,POST, PUT, HEAD methods
-	// - Credentials share disabled
-	// - Preflight requests cached for 12 hours
-	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:3000"}
-
-	r.Use(cors.New(config))
-
-	r.GET("ws/container/:id/logs", dockerCtrl.Logs)
-	r.GET("/container", dockerCtrl.List)
-	r.PUT("/container/:id/start", dockerCtrl.Start)
-	r.PUT("/container/:id/stop", dockerCtrl.Stop)
-	r.PUT("/container/:id/remove", dockerCtrl.Remove)
-	r.PUT("/container/:id/restart", dockerCtrl.Restart)
-
-	r.Run(":3001")
+	ginmix.Mix(cli).Run(":3001")
 }
