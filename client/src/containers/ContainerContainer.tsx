@@ -1,6 +1,11 @@
 import React, { useState } from "react";
 import { Container } from "../components/Container";
-import { removeContainer, startContainer, stopContainer } from "../api";
+import {
+  removeContainer,
+  restartContainer,
+  startContainer,
+  stopContainer,
+} from "../api";
 
 type ContainerContainerProps = {
   id: string;
@@ -20,7 +25,7 @@ export function ContainerContainer({
   onContainerRemove = () => {},
 }: ContainerContainerProps) {
   const [loadingState, setLoadingState] = useState<
-    "starting" | "stoping" | "removing" | "default"
+    "starting" | "stoping" | "removing" | "restarting" | "default"
   >();
 
   const onStartClick = async (id: string): Promise<void> => {
@@ -57,6 +62,17 @@ export function ContainerContainer({
     }
   };
 
+  const onRestartClick = async (id: string): Promise<void> => {
+    try {
+      setLoadingState("restarting");
+      await restartContainer(id);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingState("default");
+    }
+  };
+
   return (
     <Container
       id={id}
@@ -68,6 +84,7 @@ export function ContainerContainer({
       onStartClick={onStartClick}
       onStopClick={onStopClick}
       onRemoveClick={onRemoveClick}
+      onRestartClick={onRestartClick}
     />
   );
 }

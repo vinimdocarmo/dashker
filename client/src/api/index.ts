@@ -8,27 +8,43 @@ const createURL = (url: string): string => {
 };
 
 export const startContainer = async (id: string): Promise<void> => {
-  return fetch(createURL(`/container/${id}/start`), { method: 'PUT' }).then((res) => {
-    if (res.status !== 200) {
-      throw new Error("Error trying to start container");
+  return fetch(createURL(`/container/${id}/start`), { method: "PUT" }).then(
+    (res) => {
+      if (res.status !== 200) {
+        throw new Error("Error trying to start container");
+      }
     }
-  });
+  );
 };
 
 export const removeContainer = async (id: string): Promise<void> => {
-  return fetch(createURL(`/container/${id}/remove`), { method: 'PUT' }).then((res) => {
-    if (res.status !== 200) {
-      throw new Error("Error trying to remove container");
+  return fetch(createURL(`/container/${id}/remove`), { method: "PUT" }).then(
+    (res) => {
+      if (res.status !== 200) {
+        throw new Error("Error trying to remove container");
+      }
     }
-  });
+  );
+};
+
+export const restartContainer = async (id: string): Promise<void> => {
+  return fetch(createURL(`/container/${id}/restart`), { method: "PUT" }).then(
+    (res) => {
+      if (res.status !== 200) {
+        throw new Error("Error trying to remove container");
+      }
+    }
+  );
 };
 
 export const stopContainer = async (id: string): Promise<void> => {
-  return fetch(createURL(`/container/${id}/stop`), { method: 'PUT' }).then((res) => {
-    if (res.status !== 200) {
-      throw new Error("Error trying to start container");
+  return fetch(createURL(`/container/${id}/stop`), { method: "PUT" }).then(
+    (res) => {
+      if (res.status !== 200) {
+        throw new Error("Error trying to start container");
+      }
     }
-  });
+  );
 };
 
 export const getContainers = async (): Promise<DockerContainer[]> => {

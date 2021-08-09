@@ -33,6 +33,7 @@ func main() {
 	r.PUT("/container/:id/start", dockerCtrl.Start)
 	r.PUT("/container/:id/stop", dockerCtrl.Stop)
 	r.PUT("/container/:id/remove", dockerCtrl.Remove)
+	r.PUT("/container/:id/restart", dockerCtrl.Restart)
 
 	r.Run(":3001")
 }

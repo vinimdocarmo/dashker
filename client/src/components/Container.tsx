@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 import cls from "classnames";
-import { HiPlay, HiStop, HiTrash } from "react-icons/hi";
+import { HiPlay, HiRefresh, HiStop, HiTrash } from "react-icons/hi";
 import { ContainerLogs } from "./ContainerLogs";
 import { ClipLoader } from "react-spinners";
 
@@ -10,10 +10,11 @@ type ContainerProps = {
   image: string;
   status: string;
   state: string;
-  loadingState?: "stoping" | "starting" | "removing" | "default";
+  loadingState?: "stoping" | "starting" | "removing" | "default" | "restarting";
   onStartClick: (id: string) => void;
   onStopClick: (id: string) => void;
   onRemoveClick: (id: string) => void;
+  onRestartClick: (id: string) => void;
 };
 
 export function Container({
@@ -22,10 +23,11 @@ export function Container({
   image,
   status,
   state,
-  onStartClick: onRunClick,
+  loadingState = "default",
+  onStartClick,
   onStopClick,
   onRemoveClick,
-  loadingState = "default",
+  onRestartClick,
 }: ContainerProps) {
   const nop = () => {};
   const [showLogs, setShowLogs] = useState(false);
@@ -78,9 +80,10 @@ export function Container({
             <button
               onClick={
                 !isRunning() && loadingState === "default"
-                  ? () => onRunClick(id)
+                  ? () => onStartClick(id)
                   : nop
               }
+              className={cls({ "cursor-not-allowed": isRunning() })}
             >
               <HiPlay
                 size="30"
@@ -100,6 +103,7 @@ export function Container({
                   ? () => onStopClick(id)
                   : nop
               }
+              className={cls({ "cursor-not-allowed": !isRunning() })}
             >
               <HiStop
                 size="30"
@@ -108,6 +112,17 @@ export function Container({
                   "text-gray-900": isRunning(),
                 })}
               />
+            </button>
+          )}
+          {loadingState === "stoping" ? (
+            <ClipLoader size="25px" />
+          ) : (
+            <button
+              onClick={
+                loadingState === "default" ? () => onRestartClick(id) : nop
+              }
+            >
+              <HiRefresh size="30" className="text-gray-900" />
             </button>
           )}
           {loadingState === "removing" ? (

@@ -59,6 +59,18 @@ func (ctrl *DockerController) Stop(c *gin.Context) {
 	c.Writer.WriteHeader(http.StatusOK)
 }
 
+func (ctrl *DockerController) Restart(c *gin.Context) {
+	id := c.Params.ByName("id")
+	err := ctrl.DockerClient.ContainerRestart(c.Request.Context(), id, nil)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Writer.WriteHeader(http.StatusOK)
+}
+
 func (ctrl *DockerController) List(c *gin.Context) {
 	containers, err := ctrl.DockerClient.ContainerList(c.Request.Context(), types.ContainerListOptions{All: true})
 
