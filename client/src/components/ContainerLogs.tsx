@@ -118,7 +118,7 @@ export const ContainerLogs: React.FC<{
             id="sticky"
             name="sticky"
             checked={stickToBottom}
-            className="mr-1"
+            className="mr-1 text-indigo-500 w-4 h-4 focus:ring-indigo-400 focus:ring-opacity-25 border border-gray-300 rounded"
             onChange={(ev) => setStickToBottom(ev.target.checked)}
           />
           <label htmlFor="sticky">Stick to bottom</label>

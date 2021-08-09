@@ -14,5 +14,7 @@ module.exports = {
       cursor: ['hover'],
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/forms'),
+  ],
 }
