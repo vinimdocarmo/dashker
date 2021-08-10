@@ -15,11 +15,11 @@ export const ContainerLogs: React.FC<{
   const debouncedSearchQuery = useDebounce<string>(searchQuery, 500);
   const [stickToBottom, setStickToBottom] = useState(true);
   const [filteredLogs, setFilteredLogs] = useState<
-    { message: string; timestamp: string }[]
+    { message: string; timestamp: string; id: string }[]
   >([]);
-  const [logs, setLogs] = useState<{ message: string; timestamp: string }[]>(
-    []
-  );
+  const [logs, setLogs] = useState<
+    { message: string; timestamp: string; id: string }[]
+  >([]);
 
   const { lastJsonMessage, readyState } = useWebSocket(
     `ws://localhost:3001/ws/container/${containerId}/logs`,
@@ -30,7 +30,7 @@ export const ContainerLogs: React.FC<{
         console.info("connection opened for container ", containerId);
       },
       onMessage: () => console.debug("new message"),
-      // shouldReconnect: () => true // TODO: implement reconnect, but pass last timestamp as argument
+      shouldReconnect: () => true, // TODO: implement reconnect, but pass last timestamp as argument
     },
     socketOpen // TODO: I don't think this is working properly
   );
@@ -119,7 +119,7 @@ export const ContainerLogs: React.FC<{
             ? "[Empty log]"
             : (filteredLogs.length > 0 ? filteredLogs : logs).map((log, i) => (
                 <div
-                  key={log.timestamp}
+                  key={log.id}
                   ref={i === logs.length - 1 ? logBottomEl : null} // set ref of the last message element
                 >
                   {log.message}

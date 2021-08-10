@@ -11,12 +11,14 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
 type LogMessage struct {
 	Timestamp string `json:"timestamp"`
 	Message   string `json:"message"`
+	Id        string `json:"id"`
 }
 
 type ContainerController struct {
@@ -164,6 +166,7 @@ func (ctrl *ContainerController) Logs(c *gin.Context) {
 			logMessage := LogMessage{
 				Message:   string(output[:n]),
 				Timestamp: string(timestamp),
+				Id:        uuid.NewString(),
 			}
 
 			err = conn.WriteJSON(logMessage)
@@ -181,7 +184,7 @@ func (ctrl *ContainerController) Logs(c *gin.Context) {
 		for scanner.Scan() {
 			textSplitted := strings.SplitN(scanner.Text(), " ", 2)
 			logLine := new(LogMessage)
-			logLine.Timestamp, logLine.Message = textSplitted[0], textSplitted[1]
+			logLine.Timestamp, logLine.Message, logLine.Id = textSplitted[0], textSplitted[1], uuid.NewString()
 
 			logLines = append(logLines, logLine)
 		}
