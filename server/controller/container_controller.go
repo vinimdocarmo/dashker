@@ -204,3 +204,119 @@ func (ctrl *ContainerController) Logs(c *gin.Context) {
 		}
 	}
 }
+
+func (ctrl *ContainerController) Terminal(c *gin.Context) {
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			for _, origin := range r.Header["Origin"] {
+				if origin == "http://localhost:3000" {
+					return true
+				}
+			}
+			return false
+		},
+	}
+
+	w, r := c.Writer, c.Request
+
+	// Upgrade our raw HTTP connection to a websocket based one
+	conn, err := upgrader.Upgrade(w, r, nil)
+
+	if err != nil {
+		return
+	}
+
+	defer conn.Close()
+
+	containerId := c.Params.ByName("id")
+
+	idResponse, err := ctrl.DockerClient.ContainerExecCreate(context.Background(), containerId, types.ExecConfig{
+		Cmd:          []string{"/bin/sh", "-i"},
+		User:         "root",
+		AttachStdout: true,
+		AttachStderr: true,
+		AttachStdin:  true,
+		Tty:          true,
+		Detach:       false,
+	})
+
+	if err != nil {
+		return
+	}
+
+	hijackedResponse, err := ctrl.DockerClient.ContainerExecAttach(context.Background(), idResponse.ID, types.ExecStartCheck{Tty: true, Detach: false})
+
+	if err != nil {
+		return
+	}
+
+	defer hijackedResponse.Close()
+
+	execNotRunning := make(chan struct{})
+
+	go func() {
+		// Read content from container and send it to the client via websocket
+		for {
+			content := make([]byte, 1024)
+			n, err := hijackedResponse.Reader.Read(content)
+
+			if err != nil {
+				break
+			}
+
+			err = conn.WriteMessage(websocket.BinaryMessage, content[:n])
+
+			if err != nil {
+				break
+			}
+		}
+	}()
+
+	go func() {
+		// Read content from client and write it to the container via websocket
+		for {
+			_, buff, err := conn.ReadMessage()
+
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				break
+			}
+
+			_, err = hijackedResponse.Conn.Write(buff)
+
+			if err != nil {
+				break
+			}
+		}
+	}()
+
+	go func() {
+		// Read content from client and write it to the container via websocket
+
+		retries := 0
+
+		for {
+			if retries == 3 {
+				execNotRunning <- struct{}{}
+				break
+			}
+
+			res, err := ctrl.DockerClient.ContainerExecInspect(context.Background(), idResponse.ID)
+
+			if err != nil {
+				retries++
+				continue
+			}
+
+			if !res.Running {
+				execNotRunning <- struct{}{}
+				break
+			}
+		}
+	}()
+
+	// When exec is not running anymore, close all connections
+	<-execNotRunning
+}

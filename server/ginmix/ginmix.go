@@ -21,6 +21,7 @@ func Mix(cli *client.Client) *gin.Engine {
 
 	r.Use(cors.New(config))
 
+	r.GET("ws/container/:id/terminal", dockerCtrl.Terminal)
 	r.GET("ws/container/:id/logs", dockerCtrl.Logs)
 	r.GET("/container", dockerCtrl.List)
 	r.PUT("/container/:id/start", dockerCtrl.Start)

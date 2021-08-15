@@ -6,8 +6,9 @@ import { useDebounce } from "../hooks/useDebounce";
 
 export const ContainerLogs: React.FC<{
   containerId: string;
+  className: string;
   onClose?: () => void;
-}> = ({ containerId, onClose = () => {} }) => {
+}> = ({ className, containerId, onClose = () => {} }) => {
   const logBottomEl = useRef<HTMLDivElement>(null);
   const logTerminalEl = useRef<HTMLDivElement>(null);
   const [socketOpen, setSocketOpen] = useState(true);
@@ -72,8 +73,8 @@ export const ContainerLogs: React.FC<{
   }, [debouncedSearchQuery, logs]);
 
   return (
-    <div>
-      <div className="resize-y bg-gray-900 p-2 mt-3 font-mono text-xs relative">
+    <div className={className}>
+      <div className="resize-y bg-gray-900 p-2 font-mono text-xs relative">
         <span
           className="flex h-3 w-3 absolute -top-1.5 -left-1.5"
           title="Streaming logs"

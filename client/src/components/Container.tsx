@@ -1,8 +1,9 @@
 import React, { useCallback, useState } from "react";
 import cls from "classnames";
-import { HiPlay, HiRefresh, HiStop, HiTrash } from "react-icons/hi";
+import { HiPlay, HiRefresh, HiStop, HiTerminal, HiTrash } from "react-icons/hi";
 import { ContainerLogs } from "./ContainerLogs";
 import { ClipLoader } from "react-spinners";
+import { ContainerTerminal } from "./ContainerTerminal";
 
 type ContainerProps = {
   id: string;
@@ -31,6 +32,7 @@ export function Container({
 }: ContainerProps) {
   const nop = () => {};
   const [showLogs, setShowLogs] = useState(false);
+  const [openTerminal, setOpenTerminal] = useState(false);
   const isRunning = useCallback(() => state === "running", [state]);
   const isCreated = useCallback(() => state === "created", [state]);
   const isExited = useCallback(() => state === "exited", [state]);
@@ -74,6 +76,21 @@ export function Container({
         </div>
 
         <div className="flex space-x-1">
+          <button
+            onClick={
+              isRunning() && loadingState === "default"
+                ? () => setOpenTerminal((old) => !old)
+                : nop
+            }
+          >
+            <HiTerminal
+              size="30"
+              className={cls({
+                "text-gray-400": !isRunning(),
+                "text-gray-900": isRunning(),
+              })}
+            />
+          </button>
           {loadingState === "starting" ? (
             <ClipLoader size="25px" />
           ) : (
@@ -139,8 +156,14 @@ export function Container({
         </div>
       </div>
 
+      {openTerminal && <ContainerTerminal containerId={id} className="mt-3" />}
+
       {showLogs && (
-        <ContainerLogs containerId={id} onClose={() => setShowLogs(false)} />
+        <ContainerLogs
+          className="mt-3"
+          containerId={id}
+          onClose={() => setShowLogs(false)}
+        />
       )}
     </div>
   );
