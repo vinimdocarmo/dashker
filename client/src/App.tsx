@@ -1,18 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { HiCode } from "react-icons/hi";
-import { getContainers } from "./api";
-import { DockerContainer } from "./api/types/container.type";
-import { ContainerContainer } from "./containers/ContainerContainer";
+import ContainerListContainer from "./containers/ContainerListContainer";
 
 function App() {
-  const [containers, setContainers] = useState<DockerContainer[]>([]);
-
-  useEffect(() => {
-    getContainers()
-      .then((data) => setContainers(data))
-      .catch((err) => console.error(err));
-  }, []);
-
   return (
     <main className="bg-blue-200 min-h-screen">
       <nav className="flex items-center justify-between flex-wrap bg-gray-900 text-gray-200 p-4">
@@ -64,23 +54,7 @@ function App() {
         </div>
       </nav>
       <div className="container mx-auto mt-4">
-        {containers.map(({ id, name, status, state, image }) => (
-          <ContainerContainer
-            key={id}
-            id={id}
-            name={name}
-            image={image}
-            status={status}
-            state={state}
-            onContainerRemove={(id) => {
-              setContainers((oldContainers) => {
-                return [
-                  ...oldContainers.filter((container) => container.id !== id),
-                ];
-              });
-            }}
-          />
-        ))}
+        <ContainerListContainer />
       </div>
     </main>
   );

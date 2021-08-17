@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { HiX } from "react-icons/hi";
 import { ITerminalAddon } from "xterm";
 import cls from "classnames";
 import { AttachAddon } from "xterm-addon-attach";

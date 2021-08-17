@@ -30,8 +30,8 @@ export const ContainerLogs: React.FC<{
       onOpen: () => {
         console.info("connection opened for container ", containerId);
       },
-      onMessage: () => console.debug("new message"),
-      shouldReconnect: () => true, // TODO: implement reconnect, but pass last timestamp as argument
+      shouldReconnect: () => true, // TODO: reconnect, but don't duplicate logs
+      reconnectInterval: 500,
     },
     socketOpen // TODO: I don't think this is working properly
   );

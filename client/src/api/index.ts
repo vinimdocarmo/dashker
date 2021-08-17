@@ -66,3 +66,23 @@ export const getContainers = async (): Promise<DockerContainer[]> => {
       }))
     );
 };
+
+export const getContainer = async (
+  containerId: string
+): Promise<DockerContainer> => {
+  return fetch(createURL(`/container/${containerId}`))
+    .then(async (res) => {
+      if (res.status !== 200) {
+        throw new Error("Error trying to fetch container " + containerId);
+      }
+
+      return await res.json();
+    })
+    .then((container) => ({
+      name: container.Names[0],
+      image: container.Image,
+      id: container.Id,
+      status: container.Status,
+      state: container.State,
+    }));
+};

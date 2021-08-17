@@ -7,8 +7,10 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -82,6 +84,27 @@ func (ctrl *ContainerController) List(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, containers)
+}
+
+func (ctrl *ContainerController) Get(c *gin.Context) {
+	id := c.Params.ByName("id")
+
+	filters := filters.NewArgs()
+	filters.Add("id", id)
+
+	containers, err := ctrl.DockerClient.ContainerList(c.Request.Context(), types.ContainerListOptions{All: true, Filters: filters})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(containers) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{})
+		return
+	}
+
+	c.JSON(http.StatusOK, containers[0])
 }
 
 func (ctrl *ContainerController) Logs(c *gin.Context) {
@@ -319,4 +342,51 @@ func (ctrl *ContainerController) Terminal(c *gin.Context) {
 
 	// When exec is not running anymore, close all connections
 	<-execNotRunning
+}
+
+func (ctrl *ContainerController) Events(c *gin.Context) {
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			for _, origin := range r.Header["Origin"] {
+				if origin == "http://localhost:3000" {
+					return true
+				}
+			}
+			return false
+		},
+	}
+
+	w, r := c.Writer, c.Request
+
+	// Upgrade our raw HTTP connection to a websocket based one
+	conn, err := upgrader.Upgrade(w, r, nil)
+
+	if err != nil {
+		return
+	}
+
+	defer conn.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	defer cancel()
+
+	msgCh, errCh := ctrl.DockerClient.Events(ctx, types.EventsOptions{Since: time.Now().Format(time.RFC3339)})
+
+	for {
+		select {
+		case msg := <-msgCh:
+			if msg.Type == "container" {
+				if msg.Action == "start" || msg.Action == "stop" || msg.Action == "destroy" {
+					err := conn.WriteJSON(msg)
+
+					if err != nil {
+						return
+					}
+				}
+			}
+		case <-errCh:
+			return
+		}
+	}
 }
