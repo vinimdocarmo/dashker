@@ -131,7 +131,7 @@ export function Container({
               />
             </button>
           )}
-          {loadingState === "stoping" ? (
+          {loadingState === "restarting" ? (
             <ClipLoader size="25px" />
           ) : (
             <button
