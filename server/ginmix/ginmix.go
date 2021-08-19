@@ -23,6 +23,7 @@ func Mix(cli *client.Client) *gin.Engine {
 
 	r.GET("ws/container/events", dockerCtrl.Events)
 	r.GET("ws/container/:id/terminal", dockerCtrl.Terminal)
+	r.GET("ws/container/:id/stats", dockerCtrl.Stats)
 	r.GET("ws/container/:id/logs", dockerCtrl.Logs)
 	r.GET("/container", dockerCtrl.List)
 	r.GET("/container/:id", dockerCtrl.Get)

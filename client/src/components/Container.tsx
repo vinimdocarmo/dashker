@@ -1,6 +1,13 @@
 import React, { useCallback, useState } from "react";
 import cls from "classnames";
-import { HiPlay, HiRefresh, HiStop, HiTerminal, HiTrash } from "react-icons/hi";
+import {
+  HiChip,
+  HiPlay,
+  HiRefresh,
+  HiStop,
+  HiTerminal,
+  HiTrash,
+} from "react-icons/hi";
 import { ContainerLogs } from "./ContainerLogs";
 import { ClipLoader } from "react-spinners";
 import { ContainerTerminal } from "./ContainerTerminal";
@@ -11,6 +18,7 @@ type ContainerProps = {
   image: string;
   status: string;
   state: string;
+  stats?: { cpuUsage?: number };
   loadingState?: "stoping" | "starting" | "removing" | "default" | "restarting";
   onStartClick: (id: string) => void;
   onStopClick: (id: string) => void;
@@ -29,6 +37,7 @@ export function Container({
   onStopClick,
   onRemoveClick,
   onRestartClick,
+  stats = {},
 }: ContainerProps) {
   const nop = () => {};
   const [showLogs, setShowLogs] = useState(false);
@@ -59,6 +68,7 @@ export function Container({
             />
           </div>
           <div>
+            {/* Container name and image name */}
             <div
               className=" text-lg font-medium text-black"
               onClick={() => {
@@ -68,6 +78,22 @@ export function Container({
               <span>{image}</span>
               <span className="ml-1 text-xs text-gray-500">{name}</span>
             </div>
+
+            {/* Container Stats  */}
+            {stats.cpuUsage !== undefined && (
+              <div
+                className={cls("flex items-center space-x-1", {
+                  "text-blue-500": stats.cpuUsage >= 0 && stats.cpuUsage < 40,
+                  "text-yellow-500":
+                    stats.cpuUsage >= 40 && stats.cpuUsage < 70,
+                  "text-red-500": stats.cpuUsage >= 70,
+                })}
+              >
+                <HiChip /> <span>{stats.cpuUsage?.toFixed(2) + "%"}</span>
+              </div>
+            )}
+
+            {/* Container Status */}
             <p className="text-gray-500" title={id}>
               {id.slice(0, 10)} <span>&#8226; </span>
               <span className="text-xs">{status}</span>
@@ -75,6 +101,7 @@ export function Container({
           </div>
         </div>
 
+        {/* Container actions */}
         <div className="flex space-x-1">
           <button
             onClick={

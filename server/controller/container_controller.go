@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
@@ -387,6 +388,88 @@ func (ctrl *ContainerController) Events(c *gin.Context) {
 			}
 		case <-errCh:
 			return
+		}
+	}
+}
+
+func (ctrl *ContainerController) Stats(c *gin.Context) {
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			for _, origin := range r.Header["Origin"] {
+				if origin == "http://localhost:3000" {
+					return true
+				}
+			}
+			return false
+		},
+	}
+
+	w, r := c.Writer, c.Request
+
+	// Upgrade our raw HTTP connection to a websocket based one
+	conn, err := upgrader.Upgrade(w, r, nil)
+
+	if err != nil {
+		return
+	}
+
+	defer conn.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	defer cancel()
+
+	containerId := c.Params.ByName("id")
+
+	stats, err := ctrl.DockerClient.ContainerStats(ctx, containerId, true)
+
+	if err != nil {
+		return
+	}
+
+	defer stats.Body.Close()
+
+	var writeRetries = 0
+
+	for {
+		var data = new(struct {
+			Read     string `json:"read"`
+			CpuStats struct {
+				CpuUsage struct {
+					TotalUsage uint64 `json:"total_usage"`
+				} `json:"cpu_usage"`
+				OnlineCpus     uint8  `json:"online_cpus"`
+				SystemCpuUsage uint64 `json:"system_cpu_usage"`
+			} `json:"cpu_stats"`
+			PrecpuStats struct {
+				CpuUsage struct {
+					TotalUsage uint64 `json:"total_usage"`
+				} `json:"cpu_usage"`
+				SystemCpuUsage uint64 `json:"system_cpu_usage"`
+			} `json:"precpu_stats"`
+		})
+
+		err := json.NewDecoder(stats.Body).Decode(data)
+
+		if err != nil {
+			return
+		}
+
+		cpuDelta := data.CpuStats.CpuUsage.TotalUsage - data.PrecpuStats.CpuUsage.TotalUsage
+		systemCpuDelta := data.CpuStats.SystemCpuUsage - data.PrecpuStats.SystemCpuUsage
+		cpuUsagePerc := (float64(cpuDelta) / float64(systemCpuDelta)) * float64(data.CpuStats.OnlineCpus) * 100.0
+
+		err = conn.WriteJSON(struct {
+			CpuUsagePerc float64 `json:"cpuUsagePerc"`
+		}{CpuUsagePerc: cpuUsagePerc})
+
+		if err != nil {
+			if writeRetries == 3 {
+				return
+			} else {
+				writeRetries++
+				continue
+			}
 		}
 	}
 }

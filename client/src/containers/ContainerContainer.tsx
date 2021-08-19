@@ -6,6 +6,7 @@ import {
   startContainer,
   stopContainer,
 } from "../api";
+import useWebSocket from "react-use-websocket";
 
 type ContainerContainerProps = {
   id: string;
@@ -27,6 +28,19 @@ export function ContainerContainer({
   const [loadingState, setLoadingState] = useState<
     "starting" | "stoping" | "removing" | "restarting" | "default"
   >();
+  const { lastJsonMessage } = useWebSocket(
+    `ws://localhost:3001/ws/container/${id}/stats`,
+    {
+      onClose: () => console.warn("connection closed for container ", id),
+      onOpen: () => {
+        console.info("connection opened for container ", id);
+      },
+      shouldReconnect: () => true,
+      reconnectAttempts: 3,
+      reconnectInterval: 500,
+    },
+    state === "running"
+  );
 
   const onStartClick = async (id: string): Promise<void> => {
     try {
@@ -85,6 +99,9 @@ export function ContainerContainer({
       onStopClick={onStopClick}
       onRemoveClick={onRemoveClick}
       onRestartClick={onRestartClick}
+      stats={{
+        cpuUsage: lastJsonMessage?.cpuUsagePerc,
+      }}
     />
   );
 }
