@@ -433,7 +433,13 @@ func (ctrl *ContainerController) Stats(c *gin.Context) {
 
 	for {
 		var data = new(struct {
-			Read     string `json:"read"`
+			MemoryStats struct {
+				Usage uint64 `json:"usage"`
+				Limit uint64 `json:"limit"`
+				Stats struct {
+					Cache uint64 `json:"cache"`
+				} `json:"stats"`
+			} `json:"memory_stats"`
 			CpuStats struct {
 				CpuUsage struct {
 					TotalUsage uint64 `json:"total_usage"`
@@ -458,10 +464,13 @@ func (ctrl *ContainerController) Stats(c *gin.Context) {
 		cpuDelta := data.CpuStats.CpuUsage.TotalUsage - data.PrecpuStats.CpuUsage.TotalUsage
 		systemCpuDelta := data.CpuStats.SystemCpuUsage - data.PrecpuStats.SystemCpuUsage
 		cpuUsagePerc := (float64(cpuDelta) / float64(systemCpuDelta)) * float64(data.CpuStats.OnlineCpus) * 100.0
+		usedMemory := data.MemoryStats.Usage - data.MemoryStats.Stats.Cache
 
 		err = conn.WriteJSON(struct {
-			CpuUsagePerc float64 `json:"cpuUsagePerc"`
-		}{CpuUsagePerc: cpuUsagePerc})
+			CpuUsagePerc    float64 `json:"cpuUsagePerc"`
+			UsedMemory      uint64  `json:"usedMemory"`
+			AvailableMemory uint64  `json:"availableMemory"`
+		}{CpuUsagePerc: cpuUsagePerc, UsedMemory: usedMemory, AvailableMemory: data.MemoryStats.Limit})
 
 		if err != nil {
 			if writeRetries == 3 {

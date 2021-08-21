@@ -8,9 +8,11 @@ import {
   HiTerminal,
   HiTrash,
 } from "react-icons/hi";
+import { FaMemory } from "react-icons/fa";
 import { ContainerLogs } from "./ContainerLogs";
 import { ClipLoader } from "react-spinners";
 import { ContainerTerminal } from "./ContainerTerminal";
+import { useEffect } from "react";
 
 type ContainerProps = {
   id: string;
@@ -18,7 +20,7 @@ type ContainerProps = {
   image: string;
   status: string;
   state: string;
-  stats?: { cpuUsage?: number };
+  stats?: { cpuUsage?: number; usedMemory?: number; availableMemory?: number };
   loadingState?: "stoping" | "starting" | "removing" | "default" | "restarting";
   onStartClick: (id: string) => void;
   onStopClick: (id: string) => void;
@@ -45,6 +47,13 @@ export function Container({
   const isRunning = useCallback(() => state === "running", [state]);
   const isCreated = useCallback(() => state === "created", [state]);
   const isExited = useCallback(() => state === "exited", [state]);
+  const [memoryUsage, setMemoryUsage] = useState<number>();
+
+  useEffect(() => {
+    if (stats.usedMemory !== undefined && stats.availableMemory !== undefined) {
+      setMemoryUsage((stats.usedMemory / stats.availableMemory) * 100);
+    }
+  }, [stats.usedMemory, stats.availableMemory]);
 
   return (
     <div
@@ -80,18 +89,39 @@ export function Container({
             </div>
 
             {/* Container Stats  */}
-            {stats.cpuUsage !== undefined && (
-              <div
-                className={cls("flex items-center space-x-1", {
-                  "text-blue-500": stats.cpuUsage >= 0 && stats.cpuUsage < 40,
-                  "text-yellow-500":
-                    stats.cpuUsage >= 40 && stats.cpuUsage < 70,
-                  "text-red-500": stats.cpuUsage >= 70,
-                })}
-              >
-                <HiChip /> <span>{stats.cpuUsage?.toFixed(2) + "%"}</span>
-              </div>
-            )}
+            <div className="flex flex-row space-x-4">
+              {stats.cpuUsage !== undefined && (
+                <div
+                  className={cls("flex items-center space-x-1", {
+                    "text-blue-500": stats.cpuUsage >= 0 && stats.cpuUsage < 40,
+                    "text-yellow-500":
+                      stats.cpuUsage >= 40 && stats.cpuUsage < 70,
+                    "text-red-500": stats.cpuUsage >= 70,
+                  })}
+                >
+                  <HiChip />
+                  <span>{stats.cpuUsage?.toFixed(2) + "%"}</span>
+                </div>
+              )}
+              {stats.usedMemory !== undefined &&
+                stats.availableMemory !== undefined &&
+                memoryUsage !== undefined && (
+                  <div
+                    className={cls("flex items-center space-x-1", {
+                      "text-blue-500": memoryUsage >= 0 && memoryUsage < 40,
+                      "text-yellow-500": memoryUsage >= 40 && memoryUsage < 70,
+                      "text-red-500": memoryUsage >= 70,
+                    })}
+                  >
+                    <FaMemory />
+                    <span>{`${(stats.usedMemory / Math.pow(2, 20)).toPrecision(
+                      3
+                    )} MB/${(
+                      stats.availableMemory / Math.pow(2, 30)
+                    ).toPrecision(3)} GB`}</span>
+                  </div>
+                )}
+            </div>
 
             {/* Container Status */}
             <p className="text-gray-500" title={id}>

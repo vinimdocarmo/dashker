@@ -101,6 +101,8 @@ export function ContainerContainer({
       onRestartClick={onRestartClick}
       stats={{
         cpuUsage: lastJsonMessage?.cpuUsagePerc,
+        usedMemory: lastJsonMessage?.usedMemory,
+        availableMemory: lastJsonMessage?.availableMemory,
       }}
     />
   );
