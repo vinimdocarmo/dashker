@@ -7,6 +7,7 @@ import { ContainerContainer } from "./ContainerContainer";
 
 const ContainerListContainer: React.FC = () => {
   const [containers, setContainers] = useState<DockerContainer[]>([]);
+  const [stateFilter, setStateFilter] = useState<string>("running");
   const { lastJsonMessage } = useWebSocket(
     `ws://localhost:3001/ws/container/events`,
     {
@@ -53,23 +54,39 @@ const ContainerListContainer: React.FC = () => {
 
   return (
     <>
-      {containers.map(({ id, name, status, state, image }) => (
-        <ContainerContainer
-          key={id}
-          id={id}
-          name={name}
-          image={image}
-          status={status}
-          state={state}
-          onContainerRemove={(id) => {
-            setContainers((oldContainers) => {
-              return [
-                ...oldContainers.filter((container) => container.id !== id),
-              ];
-            });
-          }}
-        />
-      ))}
+      <select
+        onChange={(ev) => setStateFilter(ev.target.value)}
+        className="rounded-md"
+      >
+        <option value="all">All</option>
+        <option value="running">Running</option>
+      </select>
+
+      {containers
+        .filter((container) => {
+          if (stateFilter === "all") {
+            return true;
+          }
+
+          return container.state === stateFilter;
+        })
+        .map(({ id, name, status, state, image }) => (
+          <ContainerContainer
+            key={id}
+            id={id}
+            name={name}
+            image={image}
+            status={status}
+            state={state}
+            onContainerRemove={(id) => {
+              setContainers((oldContainers) => {
+                return [
+                  ...oldContainers.filter((container) => container.id !== id),
+                ];
+              });
+            }}
+          />
+        ))}
     </>
   );
 };
